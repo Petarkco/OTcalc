@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overtime Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input, button {
+      margin-bottom: 10px;
+      padding: 8px;
+      font-size: 1rem;
+    }
+    .result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Overtime Calculator</h1>
+  <form id="overtimeForm">
+    <label for="scheduledTime">Scheduled Return to Depot Time (HH:MM, 24-hour):</label>
+    <input type="time" id="scheduledTime" required>
+
+    <label for="actualTime">Actual Return to Depot Time (HH:MM, 24-hour):</label>
+    <input type="time" id="actualTime" required>
+
+    <label for="signOffTime">Sign-Off Time (HH:MM, 24-hour):</label>
+    <input type="time" id="signOffTime" required>
+
+    <button type="button" onclick="calculateOvertime()">Calculate Overtime</button>
+  </form>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    function convertTo12HourFormat(time24) {
+      const [hour, minute] = time24.split(":").map(Number);
+      const period = hour >= 12 ? "PM" : "AM";
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+    }
+
+    function calculateOvertime() {
+      const scheduledTime = document.getElementById("scheduledTime").value;
+      const actualTime = document.getElementById("actualTime").value;
+      const signOffTime = document.getElementById("signOffTime").value;
+
+      if (!scheduledTime || !actualTime || !signOffTime) {
+        alert("Please fill out all fields.");
+        return;
+      }
+
+      const scheduled = new Date(`1970-01-01T${scheduledTime}:00`);
+      const actual = new Date(`1970-01-01T${actualTime}:00`);
+      const signOff = new Date(`1970-01-01T${signOffTime}:00`);
+
+      let overtimeMs = actual - scheduled;
+      if (overtimeMs < 0) {
+        overtimeMs += 24 * 60 * 60 * 1000; // Handle past midnight
+      }
+      const overtimeMinutes = Math.floor(overtimeMs / (1000 * 60));
+
+      const newSignOff = new Date(signOff.getTime() + overtimeMs);
+      const overtimeHours = Math.floor(overtimeMinutes / 60);
+      const overtimeMins = overtimeMinutes % 60;
+
+      const overtimeText = `${overtimeHours} hours and ${overtimeMins} minutes`;
+      const newSignOffText = convertTo12HourFormat(
+        `${newSignOff.getHours()}:${newSignOff.getMinutes()}`
+      );
+
+      document.getElementById("result").innerHTML = `
+        Overtime: ${overtimeText}<br>
+        New Sign-Off Time: ${newSignOffText}
+      `;
+    }
+  </script>
+</body>
+</html>
