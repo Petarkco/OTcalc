@@ -1,131 +1,125 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Overtime Calculator</title>
-  <style>
-    * {
-      box-sizing: border-box;
+<script>
+  // Placeholder preset array
+  const shiftPresets = [
+    {
+      shift: "YD4211a",
+      scheduledTime: "10:03",
+      signOffTime: "10:08",
+      day: "Thursday"
+    },
+    {
+      shift: "YD4211b",
+      scheduledTime: "19:16",
+      signOffTime: "19:26",
+      day: "Monday"
+    },
+    {
+      shift: "Evening C",
+      scheduledTime: "18:00",
+      signOffTime: "18:30",
+      day: "Tuesday"
     }
+    // Add more here
+  ];
 
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f9f9f9;
+  const presetSelect = document.getElementById("presetSelect");
+
+  // Populate dropdown
+  shiftPresets.forEach((preset, index) => {
+    const option = document.createElement("option");
+    option.value = index;
+    option.textContent = `${preset.shift} (${preset.day})`;
+    presetSelect.appendChild(option);
+  });
+
+  // Auto-fill fields when preset is selected
+  presetSelect.addEventListener("change", () => {
+    const selected = presetSelect.value;
+    if (selected !== "") {
+      const preset = shiftPresets[selected];
+      document.getElementById("scheduledTime").value = preset.scheduledTime;
+      document.getElementById("signOffTime").value = preset.signOffTime;
     }
+  });
 
-    h1 {
-      text-align: center;
-      font-size: 1.8rem;
-      margin-bottom: 1.5rem;
-    }
+  // Automatically select closest preset by time for today
+  function selectBestPreset() {
+    const today = new Date();
+    const todayName = today.toLocaleDateString("en-US", { weekday: "long" });
 
-    form {
-      max-width: 500px;
-      margin: 0 auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
+    const todayPresets = shiftPresets.filter(p => p.day === todayName);
+    if (todayPresets.length === 0) return;
 
-    label {
-      display: block;
-      margin: 15px 0 5px;
-      font-weight: bold;
-    }
+    const nowMinutes = today.getHours() * 60 + today.getMinutes();
 
-    input[type="time"],
-    button {
-      width: 100%;
-      padding: 12px;
-      font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
+    // Find the preset with sign-off time closest to now
+    let bestIndex = -1;
+    let smallestDiff = Infinity;
 
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-      margin-top: 20px;
-    }
+    todayPresets.forEach((preset, index) => {
+      const [hours, minutes] = preset.signOffTime.split(":").map(Number);
+      const presetMinutes = hours * 60 + minutes;
+      const diff = Math.abs(presetMinutes - nowMinutes);
 
-    button:hover {
-      background-color: #0056b3;
-    }
-
-    .result {
-      max-width: 500px;
-      margin: 20px auto;
-      font-weight: bold;
-      text-align: center;
-      color: #333;
-    }
-  </style>
-</head>
-<body>
-  <h1>Overtime Calculator</h1>
-  <form id="overtimeForm">
-    <label for="scheduledTime">Scheduled Return to Depot Time (HH:MM, 24-hour):</label>
-    <input type="time" id="scheduledTime" required>
-
-    <label for="actualTime">Actual Return to Depot Time (HH:MM, 24-hour):</label>
-    <input type="time" id="actualTime" required>
-
-    <label for="signOffTime">Sign-Off Time (HH:MM, 24-hour):</label>
-    <input type="time" id="signOffTime" required>
-
-    <button type="button" onclick="calculateOvertime()">Calculate Overtime</button>
-  </form>
-
-  <div class="result" id="result"></div>
-
-  <script>
-    function convertTo12HourFormat(time24) {
-      const [hour, minute] = time24.split(":").map(Number);
-      const period = hour >= 12 ? "PM" : "AM";
-      const hour12 = hour % 12 || 12;
-      return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
-    }
-
-    function calculateOvertime() {
-      const scheduledTime = document.getElementById("scheduledTime").value;
-      const actualTime = document.getElementById("actualTime").value;
-      const signOffTime = document.getElementById("signOffTime").value;
-
-      if (!scheduledTime || !actualTime || !signOffTime) {
-        alert("Please fill out all fields.");
-        return;
+      if (diff < smallestDiff) {
+        smallestDiff = diff;
+        bestIndex = shiftPresets.indexOf(preset);
       }
+    });
 
-      const scheduled = new Date(`1970-01-01T${scheduledTime}:00`);
-      const actual = new Date(`1970-01-01T${actualTime}:00`);
-      const signOff = new Date(`1970-01-01T${signOffTime}:00`);
-
-      let overtimeMs = actual - scheduled;
-      if (overtimeMs < 0) {
-        overtimeMs += 24 * 60 * 60 * 1000; // Handle past midnight
-      }
-
-      const overtimeMinutes = Math.floor(overtimeMs / (1000 * 60));
-      const newSignOff = new Date(signOff.getTime() + overtimeMs);
-      const overtimeHours = Math.floor(overtimeMinutes / 60);
-      const overtimeMins = overtimeMinutes % 60;
-
-      const overtimeText = `${overtimeHours} hours and ${overtimeMins} minutes`;
-      const newSignOffText = convertTo12HourFormat(
-        `${newSignOff.getHours()}:${newSignOff.getMinutes()}`
-      );
-
-      document.getElementById("result").innerHTML = `
-        Overtime: ${overtimeText}<br>
-        New Sign-Off Time: ${newSignOffText}
-      `;
+    if (bestIndex !== -1) {
+      presetSelect.value = bestIndex;
+      presetSelect.dispatchEvent(new Event("change"));
     }
-  </script>
-</body>
-</html>
+  }
+
+  function convertTo12HourFormat(time24) {
+    const [hour, minute] = time24.split(":").map(Number);
+    const period = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+  }
+
+  function calculateOvertime() {
+    const scheduledTime = document.getElementById("scheduledTime").value;
+    const actualTime = document.getElementById("actualTime").value;
+    const signOffTime = document.getElementById("signOffTime").value;
+
+    if (!scheduledTime || !actualTime || !signOffTime) {
+      alert("Please fill out all fields.");
+      return;
+    }
+
+    const scheduled = new Date(`1970-01-01T${scheduledTime}:00`);
+    const actual = new Date(`1970-01-01T${actualTime}:00`);
+    const signOff = new Date(`1970-01-01T${signOffTime}:00`);
+
+    let overtimeMs = actual - scheduled;
+    if (overtimeMs < 0) {
+      overtimeMs += 24 * 60 * 60 * 1000; // Handle past midnight
+    }
+
+    const overtimeMinutes = Math.floor(overtimeMs / (1000 * 60));
+    const newSignOff = new Date(signOff.getTime() + overtimeMs);
+    const overtimeHours = Math.floor(overtimeMinutes / 60);
+    const overtimeMins = overtimeMinutes % 60;
+
+    const overtimeText = `${overtimeHours} hours and ${overtimeMins} minutes`;
+    const newSignOffText = convertTo12HourFormat(
+      `${newSignOff.getHours()}:${newSignOff.getMinutes()}`
+    );
+
+    document.getElementById("result").innerHTML = `
+      Overtime: ${overtimeText}<br>
+      New Sign-Off Time: ${newSignOffText}
+    `;
+  }
+
+  function clearForm() {
+    document.getElementById("overtimeForm").reset();
+    document.getElementById("result").innerHTML = "";
+  }
+
+  // Run auto-select on page load
+  window.addEventListener("DOMContentLoaded", selectBestPreset);
+</script>
